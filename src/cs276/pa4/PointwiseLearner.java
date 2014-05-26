@@ -1,26 +1,51 @@
 package cs276.pa4;
 
+import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import cs276.pa4.Util;
+import util.Pair;
 import weka.classifiers.Classifier;
 import weka.core.Attribute;
 import weka.core.DenseInstance;
 import weka.core.Instance;
 import weka.core.Instances;
+import weka.classifiers.functions.LinearRegression;
 
 public class PointwiseLearner extends Learner {
+	
+	private LinearRegression model;
+	private QueryDocScorer scorer;
+	
+	public PointwiseLearner() {
+		model = new LinearRegression();
+		scorer = new QueryDocScorer();
+	}
 
 	@Override
 	public Instances extract_train_features(String train_data_file,
 			String train_rel_file, Map<String, Double> idfs) {
+		Map<Query,List<Document>> trainData = null;
+		try {
+			 trainData = Util.loadTrainData(train_data_file);
+		} catch (Exception e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 		
-		/*
-		 * @TODO: Below is a piece of sample code to show 
-		 * you the basic approach to construct a Instances 
-		 * object, replace with your implementation. 
-		 */
+		Map<String, Map<String, Double>> relData = null;
+		
+		try {
+			relData = Util.loadRelData(train_rel_file);
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+
+		// create the dataset
 		
 		Instances dataset = null;
 		
@@ -34,41 +59,162 @@ public class PointwiseLearner extends Learner {
 		attributes.add(new Attribute("relevance_score"));
 		dataset = new Instances("train_dataset", attributes, 0);
 		
-		/* Add data */
-		double[] instance = {1.0, 1.0, 1.0, 1.0, 1.0, 1.0};
-		Instance inst = new DenseInstance(1.0, instance); 
-		dataset.add(inst);
+		// go through each query
+		for (Query q : trainData.keySet()) {
+			String queryStr = q.query;
+			
+			// go through all documents for that query
+			for (Document d : trainData.get(q)) {
+				// get the relevance
+				double relevance = relData.get(queryStr).get(d.url);
+				
+				// extract the features from each of the fields in this doc
+				Map<String, Double> scores = null;
+				try {
+					scores = scorer.getSimScore(d, q, idfs);
+				} catch (Exception e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+				
+				double[] instance = constructFeatureArray(scores, relevance);
+				Instance inst = new DenseInstance(1.0, instance); 
+				dataset.add(inst);
+			}
+		}
 		
 		/* Set last attribute as target */
 		dataset.setClassIndex(dataset.numAttributes() - 1);
-		
+
 		return dataset;
+	}
+	
+	/*
+	 * Input: map of field type -> score for that type
+	 * Returns: the feature vector with the relevance score as a double[]
+	 * features (in order): "url","title","body","header","anchor"
+	 */
+	private double[] constructFeatureArray(Map<String, Double> fieldTypeMap, double relevance) {
+		double[] result = new double[6];
+		
+		result[0] = fieldTypeMap.get("url");
+		result[1] = fieldTypeMap.get("title");
+		result[2] = fieldTypeMap.get("body");
+		result[3] = fieldTypeMap.get("header");
+		result[4] = fieldTypeMap.get("anchor");
+		result[5] = relevance;
+		
+		return result;
 	}
 
 	@Override
 	public Classifier training(Instances dataset) {
-		/*
-		 * @TODO: Your code here
-		 */
-		return null;
+		try {
+			model.buildClassifier(dataset);
+		} catch (Exception e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+		return model;
 	}
 
 	@Override
 	public TestFeatures extract_test_features(String test_data_file,
 			Map<String, Double> idfs) {
-		/*
-		 * @TODO: Your code here
-		 */
-		return null;
+		Map<Query,List<Document>> testData = null;
+		try {
+			testData = Util.loadTrainData(test_data_file);
+		} catch (Exception e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+
+		// create the dataset
+		
+		Map<String, Map<String, Integer>> indexMap = new HashMap<String, Map<String, Integer>>();
+		
+		Instances dataset = null;
+		
+		/* Build attributes list */
+		ArrayList<Attribute> attributes = new ArrayList<Attribute>();
+		attributes.add(new Attribute("url_w"));
+		attributes.add(new Attribute("title_w"));
+		attributes.add(new Attribute("body_w"));
+		attributes.add(new Attribute("header_w"));
+		attributes.add(new Attribute("anchor_w"));
+		attributes.add(new Attribute("relevance_score"));
+		dataset = new Instances("test_dataset", attributes, 0);
+		
+		int currIndex = 0;
+		
+		// go through each query
+		for (Query q : testData.keySet()) {
+			String queryStr = q.query;
+			
+			// doc -> index in dataset
+			Map<String, Integer> doc2Index = new HashMap<String, Integer>();
+			
+			// go through all documents for that query
+			for (Document d : testData.get(q)) {
+
+				// extract the features from each of the fields in this doc
+				Map<String, Double> scores = null;
+				try {
+					scores = scorer.getSimScore(d, q, idfs);
+				} catch (Exception e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+				
+				double[] instance = constructFeatureArray(scores, -1.0);
+				Instance inst = new DenseInstance(1.0, instance); 
+				dataset.add(currIndex, inst);
+				
+				doc2Index.put(d.url, currIndex);
+				
+				currIndex++;
+			}
+			
+			indexMap.put(queryStr, doc2Index);
+		}
+
+		TestFeatures result = new TestFeatures();
+		result.features = dataset;
+		result.index_map = indexMap;
+		
+		return result;
 	}
 
 	@Override
 	public Map<String, List<String>> testing(TestFeatures tf,
 			Classifier model) {
-		/*
-		 * @TODO: Your code here
-		 */
-		return null;
+		Map<String, List<String>> result = new HashMap<String, List<String>>();
+		
+		for (String queryStr : tf.index_map.keySet()) {
+			List<Pair<String, Double>> docScores = new ArrayList<Pair<String, Double>>();
+			
+			for (String url : tf.index_map.get(queryStr).keySet()) {
+				// get the features for this testing point
+				Instance i = tf.features.get(tf.index_map.get(queryStr).get(url));
+				
+				double predictedRelevance = -1;
+				try {
+					predictedRelevance = model.classifyInstance(i);
+				} catch (Exception e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+				
+				docScores.add(new Pair(url, predictedRelevance));
+				
+				// get the docs, sorted by relevance
+				List<String> docs = this.getSortedDocs(docScores);
+				result.put(queryStr, docs);
+			}
+		}
+		
+		return result;
 	}
 
 }

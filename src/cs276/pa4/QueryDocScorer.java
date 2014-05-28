@@ -57,7 +57,7 @@ public class QueryDocScorer
 	}
 
 
-	public Map<String, Double> getSimScore(Document d, Query q, Map<String,Double> idfs) throws Exception 
+	public Map<String, Double> getSimScore(Document d, Query q, Map<String, Double> idfs) throws Exception 
 	{
 		Map<String,Map<String, Double>> tfs = this.getDocTermFreqs(d, q);
 		this.normalizeTFs(tfs, d, q);
@@ -187,5 +187,51 @@ public class QueryDocScorer
 		}
 		return count;
 	}
+	
+	/*
+	 * Input: map of field type -> score for that type
+	 * Returns: the feature vector with the relevance score as a double[]
+	 * features (in order): "url","title","body","header","anchor"
+	 */
+	public double[] constructFeatureArray(Map<String, Double> fieldTypeMap, double relevance) {
+		double[] result = new double[6];
+		
+		result[0] = fieldTypeMap.get("url");
+		result[1] = fieldTypeMap.get("title");
+		result[2] = fieldTypeMap.get("body");
+		result[3] = fieldTypeMap.get("header");
+		result[4] = fieldTypeMap.get("anchor");
+		result[5] = relevance;
+		
+		return result;
+	}
 
+	/*
+	 * Subtract 2 arrays and return the result.
+	 */
+	public double[] subtractVectors(double[] a, double[] b) {
+		assert a.length == b.length;
+		
+		double[] result = new double[a.length];
+		
+		for (int i = 0; i < a.length; i++) {
+			result[i] = a[i] - b[i];
+		}
+		
+		return result;
+	}
+	
+	/*
+	 * Compute the dot product of 2 arrays.
+	 */
+	public double getDotProduct(double[] a, double[] b) {
+		assert a.length == b.length;
+		
+		double result = 0;
+		for (int i = 0; i < a.length; i++) {
+			result += a[i] * b[i];
+		}
+		
+		return result;
+	}
 }

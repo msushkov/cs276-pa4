@@ -77,7 +77,7 @@ public class PointwiseLearner extends Learner {
 					e.printStackTrace();
 				}
 				
-				double[] instance = constructFeatureArray(scores, relevance);
+				double[] instance = scorer.constructFeatureArray(scores, relevance);
 				Instance inst = new DenseInstance(1.0, instance); 
 				dataset.add(inst);
 			}
@@ -87,24 +87,6 @@ public class PointwiseLearner extends Learner {
 		dataset.setClassIndex(dataset.numAttributes() - 1);
 
 		return dataset;
-	}
-	
-	/*
-	 * Input: map of field type -> score for that type
-	 * Returns: the feature vector with the relevance score as a double[]
-	 * features (in order): "url","title","body","header","anchor"
-	 */
-	private double[] constructFeatureArray(Map<String, Double> fieldTypeMap, double relevance) {
-		double[] result = new double[6];
-		
-		result[0] = fieldTypeMap.get("url");
-		result[1] = fieldTypeMap.get("title");
-		result[2] = fieldTypeMap.get("body");
-		result[3] = fieldTypeMap.get("header");
-		result[4] = fieldTypeMap.get("anchor");
-		result[5] = relevance;
-		
-		return result;
 	}
 
 	@Override
@@ -167,7 +149,7 @@ public class PointwiseLearner extends Learner {
 					e.printStackTrace();
 				}
 				
-				double[] instance = constructFeatureArray(scores, -1.0);
+				double[] instance = scorer.constructFeatureArray(scores, -1.0);
 				Instance inst = new DenseInstance(1.0, instance); 
 				dataset.add(currIndex, inst);
 				
@@ -207,11 +189,11 @@ public class PointwiseLearner extends Learner {
 				}
 				
 				docScores.add(new Pair(url, predictedRelevance));
-				
-				// get the docs, sorted by relevance
-				List<String> docs = this.getSortedDocs(docScores);
-				result.put(queryStr, docs);
 			}
+			
+			// get the docs, sorted by relevance
+			List<String> docs = this.getSortedDocs(docScores);
+			result.put(queryStr, docs);
 		}
 		
 		return result;

@@ -38,21 +38,22 @@ public class PairwiseLearner extends Learner {
 		}
 
 		if(isLinearKernel){
-			model.setKernelType(new SelectedTag(LibSVM.KERNELTYPE_RBF, LibSVM.TAGS_KERNELTYPE));
+			model.setKernelType(new SelectedTag(LibSVM.KERNELTYPE_LINEAR, LibSVM.TAGS_KERNELTYPE));
 		}
 	}
 
 	public PairwiseLearner(double C, double gamma, boolean isLinearKernel){
 		try{
 			model = new LibSVM();
+			scorer = new QueryDocScorer();
 		} catch (Exception e){
 			e.printStackTrace();
 		}
 
 		model.setCost(C);
 		model.setGamma(gamma); // only matter for RBF kernel
-		if(isLinearKernel){
-			model.setKernelType(new SelectedTag(LibSVM.KERNELTYPE_LINEAR, LibSVM.TAGS_KERNELTYPE));
+		if(!isLinearKernel){
+			model.setKernelType(new SelectedTag(LibSVM.KERNELTYPE_RBF, LibSVM.TAGS_KERNELTYPE));
 		}
 	}
 

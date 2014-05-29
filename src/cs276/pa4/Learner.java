@@ -2,6 +2,7 @@ package cs276.pa4;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 
@@ -36,6 +37,31 @@ public abstract class Learner {
 			docs.add(curr.getFirst());
 		}
 		
+		return docs;
+	}
+	
+	/*
+	 * Sorts the list of documents based on the pairwise comparisons.
+	 */
+	public List<String> getSortedDocsPairwise(List<String> docs, final Map<Pair<String, String>, Double> pairWiseScores) {
+		Collections.sort(docs, new Comparator() {
+
+			@Override
+			public int compare(Object doc1, Object doc2) {
+				Pair<String, String> docPair = new Pair((String) doc1, (String) doc2);
+		
+				double val = pairWiseScores.get(docPair);
+				
+				if (val == 0.0) {
+					return -1;
+				} else {
+					return 1;
+				}
+			}
+			
+		});
+		Collections.reverse(docs);
+
 		return docs;
 	}
 }

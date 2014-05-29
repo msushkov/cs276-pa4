@@ -22,12 +22,12 @@ import weka.filters.unsupervised.attribute.Standardize;
 
 public class PairwiseLearner extends Learner {
 
-	private String DOC_SEPARATOR = "~^~^~^~";
+	private String DOC_SEPARATOR = "\t\t\t";
 	private LibSVM model;
 	private QueryDocScorer scorer;
 
 	// store the feature vector for a given (query, doc) so we don't have to repeatedly compute the same one
-	private Map<Pair<String, String>, double[]> vectorCache;
+	private Map<Pair<String, String>, double[]> vectorCache = new HashMap<Pair<String, String>, double[]>();;
 	
 	public PairwiseLearner(boolean isLinearKernel){
 		try{
@@ -38,7 +38,7 @@ public class PairwiseLearner extends Learner {
 		}
 
 		if(isLinearKernel){
-			model.setKernelType(new SelectedTag(LibSVM.KERNELTYPE_LINEAR, LibSVM.TAGS_KERNELTYPE));
+			model.setKernelType(new SelectedTag(LibSVM.KERNELTYPE_RBF, LibSVM.TAGS_KERNELTYPE));
 		}
 	}
 
@@ -75,6 +75,11 @@ public class PairwiseLearner extends Learner {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
+		
+		ArrayList<String> labels = new ArrayList<String>();
+		labels.add("-1");
+		labels.add("1");
+		Attribute cls = new Attribute("class", labels);
 
 		// create the dataset
 		Instances dataset = null;
@@ -86,11 +91,8 @@ public class PairwiseLearner extends Learner {
 		attributes.add(new Attribute("body_w"));
 		attributes.add(new Attribute("header_w"));
 		attributes.add(new Attribute("anchor_w"));
-		attributes.add(new Attribute("relevance_score"));
+		attributes.add(cls);
 		dataset = new Instances("train_dataset", attributes, 0);
-
-		// store the feature vector for a given (query, doc) so we don't have to repeatedly compute the same one
-		vectorCache = new HashMap<Pair<String, String>, double[]>();
 
 		// go through each query
 		for (Query q : trainData.keySet()) {
@@ -159,15 +161,15 @@ public class PairwiseLearner extends Learner {
 					double[] featureVector = scorer.subtractVectors(currQueryDocFeatures1, currQueryDocFeatures2);
 
 					// find the output label for this pair of vectors (-1 or +1)
-					double outputLabel = -100;
+					String outputLabel = "";
 					if (relevance1 > relevance2) {
-						outputLabel = 1;
+						outputLabel = "1";
 					} else if (relevance1 < relevance2) {
-						outputLabel = -1;
+						outputLabel = "-1";
 					}
 
 					// set the relevance of the resulting feature vector
-					featureVector[5] = dataset.attribute(5).addStringValue("" + outputLabel);;
+					featureVector[5] = dataset.attribute(5).indexOfValue(outputLabel);
 
 					Instance inst = new DenseInstance(1.0, featureVector);
 					dataset.add(inst);
@@ -228,6 +230,11 @@ public class PairwiseLearner extends Learner {
 		Map<String, Map<String, Integer>> indexMap = new HashMap<String, Map<String, Integer>>();
 
 		Instances dataset = null;
+		
+		ArrayList<String> labels = new ArrayList<String>();
+		labels.add("-1");
+		labels.add("1");
+		Attribute cls = new Attribute("class", labels);
 
 		/* Build attributes list */
 		ArrayList<Attribute> attributes = new ArrayList<Attribute>();
@@ -236,7 +243,7 @@ public class PairwiseLearner extends Learner {
 		attributes.add(new Attribute("body_w"));
 		attributes.add(new Attribute("header_w"));
 		attributes.add(new Attribute("anchor_w"));
-		attributes.add(new Attribute("relevance_score"));
+		attributes.add(cls);
 		dataset = new Instances("train_dataset", attributes, 0);
 
 		int currIndex = 0;
@@ -347,14 +354,16 @@ public class PairwiseLearner extends Learner {
 	@Override
 	public Map<String, List<String>> testing(TestFeatures tf,
 			Classifier model) {
-		double[] weights = ((LibSVM) model).coefficients();
-		
-		Map<String, List<String>> result = new HashMap<String, List<String>>();
 
+		Map<String, List<String>> result = new HashMap<String, List<String>>();
+		
 		for (String queryStr : tf.index_map.keySet()) {
 			List<Pair<String, Double>> docScores = new ArrayList<Pair<String, Double>>();
 			
 			HashSet<String> docsAlreadySeen = new HashSet<String>();
+			
+			// for each pair of documents, stores 0 or 1
+			Map<Pair<String, String>, Double> pairWiseScores = new HashMap<Pair<String, String>, Double>();
 
 			// url1AndUrl2 is a concatenation, with a delimiter, of url for doc1 and url for doc2
 			for (String url1AndUrl2 : tf.index_map.get(queryStr).keySet()) {
@@ -362,26 +371,36 @@ public class PairwiseLearner extends Learner {
 				String doc1Url = urls[0];
 				String doc2Url = urls[1];
 				
-				docsAlreadySeen.add(doc1Url);
-				docsAlreadySeen.add(doc2Url);
-				
 				// get the feature vectors for (query, doc1) and (query, doc2)
 				double[] featureVector1 = vectorCache.get(new Pair(queryStr, doc1Url));
 				double[] featureVector2 = vectorCache.get(new Pair(queryStr, doc2Url));
 				
-				// if we haven't added scores for these docs, add them
-				if (!docsAlreadySeen.contains(doc1Url)) {
-					docScores.add(new Pair(doc1Url, scorer.getDotProduct(featureVector1, weights)));
+				// get the features for this testing point
+				Instance i = tf.features.get(tf.index_map.get(queryStr).get(url1AndUrl2));
+				
+				// will be 0.0 or 1.0
+				double predictedClass = -1;
+				try {
+					predictedClass = model.classifyInstance(i);
+				} catch (Exception e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
 				}
 				
-				if (!docsAlreadySeen.contains(doc2Url)) {
-					docScores.add(new Pair(doc2Url, scorer.getDotProduct(featureVector2, weights)));
-				}
+				pairWiseScores.put(new Pair(doc1Url, doc2Url), predictedClass);
+				pairWiseScores.put(new Pair(doc2Url, doc1Url), predictedClass == 0.0 ? 1.0 : 0.0);
 				
+				docsAlreadySeen.add(doc1Url);
+				docsAlreadySeen.add(doc2Url);
+			}
+			
+			List<String> documents = new ArrayList<String>();
+			for (String doc : docsAlreadySeen) {
+				documents.add(doc);
 			}
 			
 			// get the docs, sorted by relevance
-			List<String> docs = this.getSortedDocs(docScores);
+			List<String> docs = this.getSortedDocsPairwise(documents, pairWiseScores);
 			result.put(queryStr, docs);
 		}
 

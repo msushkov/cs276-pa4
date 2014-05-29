@@ -27,7 +27,7 @@ public class PointwiseLearner extends Learner {
 
 	@Override
 	public Instances extract_train_features(String train_data_file,
-			String train_rel_file, Map<String, Double> idfs) {
+			String train_rel_file, Map<String, Double> idfs, Map<String, Double> additionalFeatures) {
 		Map<Query,List<Document>> trainData = null;
 		try {
 			 trainData = Util.loadTrainData(train_data_file);
@@ -77,7 +77,7 @@ public class PointwiseLearner extends Learner {
 					e.printStackTrace();
 				}
 				
-				double[] instance = scorer.constructFeatureArray(scores, relevance);
+				double[] instance = scorer.constructFeatureArray(scores, additionalFeatures, relevance);
 				Instance inst = new DenseInstance(1.0, instance); 
 				dataset.add(inst);
 			}
@@ -103,7 +103,7 @@ public class PointwiseLearner extends Learner {
 
 	@Override
 	public TestFeatures extract_test_features(String test_data_file,
-			Map<String, Double> idfs) {
+			Map<String, Double> idfs, Map<String, Double> additionalFeatures) {
 		Map<Query,List<Document>> testData = null;
 		try {
 			testData = Util.loadTrainData(test_data_file);
@@ -149,7 +149,7 @@ public class PointwiseLearner extends Learner {
 					e.printStackTrace();
 				}
 				
-				double[] instance = scorer.constructFeatureArray(scores, -1.0);
+				double[] instance = scorer.constructFeatureArray(scores, additionalFeatures, -1.0);
 				Instance inst = new DenseInstance(1.0, instance); 
 				dataset.add(currIndex, inst);
 				

@@ -25,10 +25,12 @@ public class PairwiseLearner extends Learner {
 	private String DOC_SEPARATOR = "\t\t\t";
 	private LibSVM model;
 	private QueryDocScorer scorer;
+	private BM25Scorer bm25scorer;
+	private SmallestWindowScorer smScorer;
 
 	// store the feature vector for a given (query, doc) so we don't have to repeatedly compute the same one
 	private Map<Pair<String, String>, double[]> vectorCache = new HashMap<Pair<String, String>, double[]>();;
-	
+
 	public PairwiseLearner(boolean isLinearKernel){
 		try{
 			model = new LibSVM();
@@ -58,8 +60,8 @@ public class PairwiseLearner extends Learner {
 	}
 
 	@Override
-	public Instances extract_train_features(String train_data_file,
-			String train_rel_file, Map<String, Double> idfs) {
+	public Instances extract_train_features(String train_data_file, String train_rel_file,
+			Map<String, Double> idfs, Map<String, Double> additionalFeatures) {
 		Map<Query,List<Document>> trainData = null;
 		try {
 			trainData = Util.loadTrainData(train_data_file);
@@ -76,7 +78,7 @@ public class PairwiseLearner extends Learner {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-		
+
 		ArrayList<String> labels = new ArrayList<String>();
 		labels.add("-1");
 		labels.add("1");
@@ -92,6 +94,23 @@ public class PairwiseLearner extends Learner {
 		attributes.add(new Attribute("body_w"));
 		attributes.add(new Attribute("header_w"));
 		attributes.add(new Attribute("anchor_w"));
+
+		// add, if present, BM25, smallest window, and pagerank
+
+		if (additionalFeatures.containsKey("bm25")) {
+			attributes.add(new Attribute("bm25"));
+			bm25scorer = new BM25Scorer(idfs, trainData);
+		}
+
+		if (additionalFeatures.containsKey("smallestwindow")) {
+			attributes.add(new Attribute("smallestwindow"));
+			smScorer = new SmallestWindowScorer(idfs, trainData);
+		}
+
+		if (additionalFeatures.containsKey("pagerank")) {
+			attributes.add(new Attribute("pagerank"));
+		}
+
 		attributes.add(cls);
 		dataset = new Instances("train_dataset", attributes, 0);
 
@@ -135,7 +154,29 @@ public class PairwiseLearner extends Learner {
 							e.printStackTrace();
 						}
 
-						currQueryDocFeatures1 = scorer.constructFeatureArray(scores, relevance1);
+						if (additionalFeatures.containsKey("bm25")) {
+							try {
+								additionalFeatures.put("bm25", bm25scorer.getBM25Score(d1, q, idfs));
+							} catch (Exception e) {
+								// TODO Auto-generated catch block
+								e.printStackTrace();
+							}
+						}
+
+						if (additionalFeatures.containsKey("smallestwindow")) {
+							try {
+								additionalFeatures.put("smallestwindow", smScorer.getSmallestWindow(d1, q, idfs));
+							} catch (Exception e) {
+								// TODO Auto-generated catch block
+								e.printStackTrace();
+							}
+						}
+
+						if (additionalFeatures.containsKey("pagerank")) {
+							additionalFeatures.put("pagerank", (double) d1.page_rank);
+						}
+
+						currQueryDocFeatures1 = scorer.constructFeatureArray(scores, additionalFeatures, relevance1);
 					} else {
 						currQueryDocFeatures1 = vectorCache.get(currQueryDoc1);
 					}
@@ -151,7 +192,29 @@ public class PairwiseLearner extends Learner {
 							e.printStackTrace();
 						}
 
-						currQueryDocFeatures2 = scorer.constructFeatureArray(scores, relevance2);
+						if (additionalFeatures.containsKey("bm25")) {
+							try {
+								additionalFeatures.put("bm25", bm25scorer.getBM25Score(d2, q, idfs));
+							} catch (Exception e) {
+								// TODO Auto-generated catch block
+								e.printStackTrace();
+							}
+						}
+
+						if (additionalFeatures.containsKey("smallestwindow")) {
+							try {
+								additionalFeatures.put("smallestwindow", smScorer.getSmallestWindow(d2, q, idfs));
+							} catch (Exception e) {
+								// TODO Auto-generated catch block
+								e.printStackTrace();
+							}
+						}
+
+						if (additionalFeatures.containsKey("pagerank")) {
+							additionalFeatures.put("pagerank", (double) d2.page_rank);
+						}
+
+						currQueryDocFeatures2 = scorer.constructFeatureArray(scores, additionalFeatures, relevance2);
 					} else {
 						currQueryDocFeatures2 = vectorCache.get(currQueryDoc2);
 					}
@@ -169,8 +232,22 @@ public class PairwiseLearner extends Learner {
 						outputLabel = "-1";
 					}
 
+					int index = 5;
+
+					if (additionalFeatures.containsKey("bm25")) {
+						index++;
+					}
+
+					if (additionalFeatures.containsKey("smallestwindow")) {
+						index++;
+					}
+
+					if (additionalFeatures.containsKey("pagerank")) {
+						index++;
+					}
+
 					// set the relevance of the resulting feature vector
-					featureVector[5] = dataset.attribute(5).indexOfValue(outputLabel);
+					featureVector[index] = dataset.attribute(index).indexOfValue(outputLabel);
 
 					Instance inst = new DenseInstance(1.0, featureVector);
 					dataset.add(inst);
@@ -217,7 +294,7 @@ public class PairwiseLearner extends Learner {
 
 	@Override
 	public TestFeatures extract_test_features(String test_data_file,
-			Map<String, Double> idfs) {
+			Map<String, Double> idfs, Map<String, Double> additionalFeatures) {
 		Map<Query,List<Document>> trainData = null;
 		try {
 			trainData = Util.loadTrainData(test_data_file);
@@ -231,7 +308,7 @@ public class PairwiseLearner extends Learner {
 		Map<String, Map<String, Integer>> indexMap = new HashMap<String, Map<String, Integer>>();
 
 		Instances dataset = null;
-		
+
 		ArrayList<String> labels = new ArrayList<String>();
 		labels.add("-1");
 		labels.add("1");
@@ -244,6 +321,23 @@ public class PairwiseLearner extends Learner {
 		attributes.add(new Attribute("body_w"));
 		attributes.add(new Attribute("header_w"));
 		attributes.add(new Attribute("anchor_w"));
+
+		// add, if present, BM25, smallest window, and pagerank
+
+		if (additionalFeatures.containsKey("bm25")) {
+			attributes.add(new Attribute("bm25"));
+			bm25scorer = new BM25Scorer(idfs, trainData);
+		}
+
+		if (additionalFeatures.containsKey("smallestwindow")) {
+			attributes.add(new Attribute("smallestwindow"));
+			smScorer = new SmallestWindowScorer(idfs, trainData);
+		}
+
+		if (additionalFeatures.containsKey("pagerank")) {
+			attributes.add(new Attribute("pagerank"));
+		}
+
 		attributes.add(cls);
 		dataset = new Instances("train_dataset", attributes, 0);
 
@@ -286,7 +380,29 @@ public class PairwiseLearner extends Learner {
 							e.printStackTrace();
 						}
 
-						currQueryDocFeatures1 = scorer.constructFeatureArray(scores, -100);
+						if (additionalFeatures.containsKey("bm25")) {
+							try {
+								additionalFeatures.put("bm25", bm25scorer.getBM25Score(d1, q, idfs));
+							} catch (Exception e) {
+								// TODO Auto-generated catch block
+								e.printStackTrace();
+							}
+						}
+
+						if (additionalFeatures.containsKey("smallestwindow")) {
+							try {
+								additionalFeatures.put("smallestwindow", smScorer.getSmallestWindow(d1, q, idfs));
+							} catch (Exception e) {
+								// TODO Auto-generated catch block
+								e.printStackTrace();
+							}
+						}
+
+						if (additionalFeatures.containsKey("pagerank")) {
+							additionalFeatures.put("pagerank", (double) d1.page_rank);
+						}
+
+						currQueryDocFeatures1 = scorer.constructFeatureArray(scores, additionalFeatures, -100);
 					} else {
 						currQueryDocFeatures1 = vectorCache.get(currQueryDoc1);
 					}
@@ -302,7 +418,29 @@ public class PairwiseLearner extends Learner {
 							e.printStackTrace();
 						}
 
-						currQueryDocFeatures2 = scorer.constructFeatureArray(scores, -100);
+						if (additionalFeatures.containsKey("bm25")) {
+							try {
+								additionalFeatures.put("bm25", bm25scorer.getBM25Score(d2, q, idfs));
+							} catch (Exception e) {
+								// TODO Auto-generated catch block
+								e.printStackTrace();
+							}
+						}
+
+						if (additionalFeatures.containsKey("smallestwindow")) {
+							try {
+								additionalFeatures.put("smallestwindow", smScorer.getSmallestWindow(d2, q, idfs));
+							} catch (Exception e) {
+								// TODO Auto-generated catch block
+								e.printStackTrace();
+							}
+						}
+
+						if (additionalFeatures.containsKey("pagerank")) {
+							additionalFeatures.put("pagerank", (double) d2.page_rank);
+						}
+
+						currQueryDocFeatures2 = scorer.constructFeatureArray(scores, additionalFeatures, -100);
 					} else {
 						currQueryDocFeatures2 = vectorCache.get(currQueryDoc2);
 					}
@@ -357,12 +495,12 @@ public class PairwiseLearner extends Learner {
 			Classifier model) {
 
 		Map<String, List<String>> result = new HashMap<String, List<String>>();
-		
+
 		for (String queryStr : tf.index_map.keySet()) {
 			List<Pair<String, Double>> docScores = new ArrayList<Pair<String, Double>>();
-			
+
 			HashSet<String> docsAlreadySeen = new HashSet<String>();
-			
+
 			// for each pair of documents, stores 0 or 1
 			Map<Pair<String, String>, Double> pairWiseScores = new HashMap<Pair<String, String>, Double>();
 
@@ -371,14 +509,14 @@ public class PairwiseLearner extends Learner {
 				String[] urls = url1AndUrl2.split(DOC_SEPARATOR);
 				String doc1Url = urls[0];
 				String doc2Url = urls[1];
-				
+
 				// get the feature vectors for (query, doc1) and (query, doc2)
 				double[] featureVector1 = vectorCache.get(new Pair(queryStr, doc1Url));
 				double[] featureVector2 = vectorCache.get(new Pair(queryStr, doc2Url));
-				
+
 				// get the features for this testing point
 				Instance i = tf.features.get(tf.index_map.get(queryStr).get(url1AndUrl2));
-				
+
 				// will be 0.0 or 1.0
 				double predictedClass = -1;
 				try {
@@ -387,19 +525,19 @@ public class PairwiseLearner extends Learner {
 					// TODO Auto-generated catch block
 					e.printStackTrace();
 				}
-				
+
 				pairWiseScores.put(new Pair(doc1Url, doc2Url), predictedClass);
 				pairWiseScores.put(new Pair(doc2Url, doc1Url), predictedClass == 0.0 ? 1.0 : 0.0);
-				
+
 				docsAlreadySeen.add(doc1Url);
 				docsAlreadySeen.add(doc2Url);
 			}
-			
+
 			List<String> documents = new ArrayList<String>();
 			for (String doc : docsAlreadySeen) {
 				documents.add(doc);
 			}
-			
+
 			// get the docs, sorted by relevance
 			List<String> docs = this.getSortedDocsPairwise(documents, pairWiseScores);
 			result.put(queryStr, docs);

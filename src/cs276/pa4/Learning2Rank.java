@@ -17,9 +17,11 @@ public class Learning2Rank {
 
 
 	public static Classifier train(String train_data_file, String train_rel_file, int task, Map<String,Double> idfs) {
-		//System.err.println("## Training with feature_file =" + train_data_file + ", rel_file = " + train_rel_file + " ... \n");
+		System.err.println("## Training with feature_file =" + train_data_file + ", rel_file = " + train_rel_file + " ... \n");
 		Classifier model = null;
 		Learner learner = null;
+		
+		Map<String, Double> additionalFeatures = new HashMap<String, Double>();
 
 		if (task == 1) {
 			learner = new PointwiseLearner();
@@ -43,19 +45,21 @@ public class Learning2Rank {
 		}
 
 		/* Step (1): construct your feature matrix here */
-		Instances data = learner.extract_train_features(train_data_file, train_rel_file, idfs);
+		Instances data = learner.extract_train_features(train_data_file, train_rel_file, idfs, additionalFeatures);
 
 		/* Step (2): implement your learning algorithm here */
 		model = learner.training(data);
 
 		return model;
 	}
-	
+
 	// overloaded method to accept C and gamma as params
 	public static Classifier train(String train_data_file, String train_rel_file, int task, Map<String,Double> idfs, double C, double gamma) {
 		//System.err.println("## Training with feature_file =" + train_data_file + ", rel_file = " + train_rel_file + " ... \n");
 		Classifier model = null;
 		Learner learner = null;
+
+		Map<String, Double> additionalFeatures = new HashMap<String, Double>();
 
 		if (task == 1) {
 			learner = new PointwiseLearner();
@@ -64,10 +68,12 @@ public class Learning2Rank {
 			learner = new PairwiseLearner(C, gamma, isLinearKernel);
 		} else if (task == 3) {
 
-			/* 
-			 * @TODO: Your code here, add more features 
-			 * */
-			System.err.println("Task 3");
+			// add features
+			additionalFeatures.put("bm25", 1.0);
+			additionalFeatures.put("smallestwindow", 1.0);
+//			additionalFeatures.put("pagerank", 1.0);
+
+			learner = new PairwiseLearner(C, gamma, false);
 
 		} else if (task == 4) {
 
@@ -79,7 +85,7 @@ public class Learning2Rank {
 		}
 
 		/* Step (1): construct your feature matrix here */
-		Instances data = learner.extract_train_features(train_data_file, train_rel_file, idfs);
+		Instances data = learner.extract_train_features(train_data_file, train_rel_file, idfs, additionalFeatures);
 
 		/* Step (2): implement your learning algorithm here */
 		model = learner.training(data);
@@ -88,9 +94,12 @@ public class Learning2Rank {
 	}
 
 	public static Map<String, List<String>> test(String test_data_file, Classifier model, int task, Map<String,Double> idfs){
-		//System.err.println("## Testing with feature_file=" + test_data_file + " ... \n");
+		System.err.println("## Testing with feature_file=" + test_data_file + " ... \n");
 		Map<String, List<String>> ranked_queries = new HashMap<String, List<String>>();
 		Learner learner = null;
+		
+		Map<String, Double> additionalFeatures = new HashMap<String, Double>();
+		
 		if (task == 1) {
 			learner = new PointwiseLearner();
 		} else if (task == 2) {
@@ -98,9 +107,6 @@ public class Learning2Rank {
 			learner = new PairwiseLearner(isLinearKernel);
 		} else if (task == 3) {
 
-			/* 
-			 * @TODO: Your code here, add more features 
-			 * */
 			System.err.println("Task 3");
 
 		} else if (task == 4) {
@@ -113,7 +119,48 @@ public class Learning2Rank {
 		}
 
 		/* Step (1): construct your test feature matrix here */
-		TestFeatures tf = learner.extract_test_features(test_data_file, idfs);
+		TestFeatures tf = learner.extract_test_features(test_data_file, idfs, additionalFeatures);
+
+		/* Step (2): implement your prediction and ranking code here */
+		ranked_queries = learner.testing(tf, model);
+
+		return ranked_queries;
+	}
+
+	// overloaded method to accept C and gamma
+	public static Map<String, List<String>> test(String test_data_file, Classifier model, int task,
+			Map<String,Double> idfs, double C, double gamma){
+		System.err.println("## Testing with feature_file=" + test_data_file + " ... \n");
+		Map<String, List<String>> ranked_queries = new HashMap<String, List<String>>();
+		Learner learner = null;
+		
+		Map<String, Double> additionalFeatures = new HashMap<String, Double>();
+		
+		if (task == 1) {
+			learner = new PointwiseLearner();
+		} else if (task == 2) {
+			boolean isLinearKernel = true;
+			learner = new PairwiseLearner(isLinearKernel);
+		} else if (task == 3) {
+
+			// add features
+			additionalFeatures.put("bm25", 1.0);
+			additionalFeatures.put("smallestwindow", 1.0);
+//			additionalFeatures.put("pagerank", 1.0);
+
+			learner = new PairwiseLearner(C, gamma, false);
+
+		} else if (task == 4) {
+
+			/* 
+			 * @TODO: Your code here, extra credit 
+			 * */
+			System.err.println("Extra credit");
+
+		}
+
+		/* Step (1): construct your test feature matrix here */
+		TestFeatures tf = learner.extract_test_features(test_data_file, idfs, additionalFeatures);
 
 		/* Step (2): implement your prediction and ranking code here */
 		ranked_queries = learner.testing(tf, model);
@@ -163,21 +210,24 @@ public class Learning2Rank {
 		}
 
 		// grid search over parameters
-		double[] Cs = { Math.pow(2, -3), 0.25, 0.5, 1.0, 2.0, 4.0, 8.0 };
-		double[] gammas = { Math.pow(2, -7), Math.pow(2, -6), Math.pow(2, -5), Math.pow(2, -4), Math.pow(2, -3), Math.pow(2, -2), Math.pow(2, -1) };
+		// double[] Cs = { Math.pow(2, -3), 0.25, 0.5, 1.0, 2.0, 4.0, 8.0 };
+		// double[] gammas = { Math.pow(2, -7), Math.pow(2, -6), Math.pow(2, -5), Math.pow(2, -4), Math.pow(2, -3), Math.pow(2, -2), Math.pow(2, -1) };
+
+		// use the optimal parameters discovered through grid search
+		double[] Cs = { 0.5 };
+		double[] gammas = { 0.125 };
 
 		for (double C : Cs) {
 			for (double gamma : gammas) {
-				System.out.println("NEXT STEP..........................");
 				System.out.println("C: " + C);
 				System.out.println("gamma: " + gamma);
-				
+
 				/* Train & test */
-				//System.err.println("### Running task" + task + "...");		
+				System.err.println("### Running task" + task + "...");		
 				Classifier model = train(train_data_file, train_rel_file, task, idfs, C, gamma);
 
 				/* performance on the training data */
-				Map<String, List<String>> trained_ranked_queries = test(train_data_file, model, task, idfs);
+				Map<String, List<String>> trained_ranked_queries = test(train_data_file, model, task, idfs, C, gamma);
 				String trainOutFile="tmp.train.ranked";
 				writeRankedResultsToFile(trained_ranked_queries, new PrintStream(new FileOutputStream(trainOutFile)));
 
@@ -186,7 +236,7 @@ public class Learning2Rank {
 
 				(new File(trainOutFile)).delete();
 
-				Map<String, List<String>> ranked_queries = test(test_data_file, model, task, idfs);
+				Map<String, List<String>> ranked_queries = test(test_data_file, model, task, idfs, C, gamma);
 
 				/* Output results */
 				if (ranked_out_file.equals("")){ /* output to stdout */
@@ -199,16 +249,13 @@ public class Learning2Rank {
 					}
 
 				} // end if
-				
+
 				NdcgMain ndcg1 = new NdcgMain("data/pa4.rel.dev");
 				double ndcgScore = ndcg1.score(ranked_out_file);
 				System.out.println("SCORE: " + ndcgScore);
 
-				
-				System.out.println("DONE CURRENT ITERATION!!!!!!!!!!!!!!!!!!!!!!!\n\n\n\n");
-				
 			} // end loop over gamma
-			
+
 		} // end loop over C
 
 	}

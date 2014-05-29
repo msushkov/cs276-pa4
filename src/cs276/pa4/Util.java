@@ -77,7 +77,7 @@ public class Util {
     }
 
     reader.close();
-    //System.err.println("# Signal file " + feature_file_name + ": number of queries=" + numQuery + ", number of documents=" + numDoc);
+    System.err.println("# Signal file " + feature_file_name + ": number of queries=" + numQuery + ", number of documents=" + numDoc);
 
     return result;
   }
@@ -129,7 +129,7 @@ public class Util {
       }
     }	
     reader.close();
-    //System.err.println("# Rel file " + rel_file_name + ": number of queries=" + numQuery + ", number of documents=" + numDoc);
+    System.err.println("# Rel file " + rel_file_name + ": number of queries=" + numQuery + ", number of documents=" + numDoc);
     
     return result;
   }

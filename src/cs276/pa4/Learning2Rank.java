@@ -69,7 +69,7 @@ public class Learning2Rank {
 		} else if (task == 3) {
 
 			// add features
-			additionalFeatures.put("bm25", 1.0);
+//			additionalFeatures.put("bm25", 1.0);
 //			additionalFeatures.put("smallestwindow", 1.0);
 //			additionalFeatures.put("pagerank", 1.0);
 
@@ -144,7 +144,7 @@ public class Learning2Rank {
 		} else if (task == 3) {
 
 			// add features
-			additionalFeatures.put("bm25", 1.0);
+//			additionalFeatures.put("bm25", 1.0);
 //			additionalFeatures.put("smallestwindow", 1.0);
 //			additionalFeatures.put("pagerank", 1.0);
 

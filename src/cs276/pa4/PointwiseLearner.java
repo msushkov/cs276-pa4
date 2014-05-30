@@ -98,6 +98,11 @@ public class PointwiseLearner extends Learner {
 			e.printStackTrace();
 		}
 		
+//		System.out.println("COEFFICIENTS: " + this.model.numParameters());
+//		for (double coef : this.model.coefficients()) {
+//			System.out.println(coef);
+//		}
+		
 		return model;
 	}
 

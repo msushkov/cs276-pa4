@@ -26,7 +26,7 @@ public class Learning2Rank {
 		if (task == 1) {
 			learner = new PointwiseLearner();
 		} else if (task == 2) {
-			boolean isLinearKernel = true;
+			boolean isLinearKernel = false;
 			learner = new PairwiseLearner(isLinearKernel);
 		} else if (task == 3) {
 
@@ -70,8 +70,8 @@ public class Learning2Rank {
 
 			// add features
 			additionalFeatures.put("bm25", 1.0);
-//			additionalFeatures.put("smallestwindow", 1.0);
-//			additionalFeatures.put("pagerank", 1.0);
+			additionalFeatures.put("smallestwindow", 1.0);
+			additionalFeatures.put("pagerank", 1.0);
 
 			learner = new PairwiseLearner(C, gamma, false);
 
@@ -103,7 +103,7 @@ public class Learning2Rank {
 		if (task == 1) {
 			learner = new PointwiseLearner();
 		} else if (task == 2) {
-			boolean isLinearKernel = true;
+			boolean isLinearKernel = false;
 			learner = new PairwiseLearner(isLinearKernel);
 		} else if (task == 3) {
 
@@ -139,14 +139,14 @@ public class Learning2Rank {
 		if (task == 1) {
 			learner = new PointwiseLearner();
 		} else if (task == 2) {
-			boolean isLinearKernel = true;
+			boolean isLinearKernel = false;
 			learner = new PairwiseLearner(isLinearKernel);
 		} else if (task == 3) {
 
 			// add features
 			additionalFeatures.put("bm25", 1.0);
-//			additionalFeatures.put("smallestwindow", 1.0);
-//			additionalFeatures.put("pagerank", 1.0);
+			additionalFeatures.put("smallestwindow", 1.0);
+			additionalFeatures.put("pagerank", 1.0);
 
 			learner = new PairwiseLearner(C, gamma, false);
 

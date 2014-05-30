@@ -41,6 +41,8 @@ public class PairwiseLearner extends Learner {
 
 		if(isLinearKernel){
 			model.setKernelType(new SelectedTag(LibSVM.KERNELTYPE_LINEAR, LibSVM.TAGS_KERNELTYPE));
+		} else {
+			model.setKernelType(new SelectedTag(LibSVM.KERNELTYPE_RBF, LibSVM.TAGS_KERNELTYPE));
 		}
 	}
 
@@ -56,6 +58,8 @@ public class PairwiseLearner extends Learner {
 		model.setGamma(gamma); // only matter for RBF kernel
 		if(!isLinearKernel){
 			model.setKernelType(new SelectedTag(LibSVM.KERNELTYPE_RBF, LibSVM.TAGS_KERNELTYPE));
+		} else {
+			model.setKernelType(new SelectedTag(LibSVM.KERNELTYPE_LINEAR, LibSVM.TAGS_KERNELTYPE));
 		}
 	}
 
@@ -177,6 +181,7 @@ public class PairwiseLearner extends Learner {
 						}
 
 						currQueryDocFeatures1 = scorer.constructFeatureArray(scores, additionalFeatures, relevance1);
+						vectorCache.put(currQueryDoc1, currQueryDocFeatures1);
 					} else {
 						currQueryDocFeatures1 = vectorCache.get(currQueryDoc1);
 					}
@@ -215,6 +220,7 @@ public class PairwiseLearner extends Learner {
 						}
 
 						currQueryDocFeatures2 = scorer.constructFeatureArray(scores, additionalFeatures, relevance2);
+						vectorCache.put(currQueryDoc2, currQueryDocFeatures2);
 					} else {
 						currQueryDocFeatures2 = vectorCache.get(currQueryDoc2);
 					}
@@ -403,6 +409,7 @@ public class PairwiseLearner extends Learner {
 						}
 
 						currQueryDocFeatures1 = scorer.constructFeatureArray(scores, additionalFeatures, -100);
+						vectorCache.put(currQueryDoc1, currQueryDocFeatures1);
 					} else {
 						currQueryDocFeatures1 = vectorCache.get(currQueryDoc1);
 					}
@@ -441,6 +448,7 @@ public class PairwiseLearner extends Learner {
 						}
 
 						currQueryDocFeatures2 = scorer.constructFeatureArray(scores, additionalFeatures, -100);
+						vectorCache.put(currQueryDoc2, currQueryDocFeatures2);
 					} else {
 						currQueryDocFeatures2 = vectorCache.get(currQueryDoc2);
 					}

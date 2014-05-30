@@ -14,6 +14,20 @@ public class BM25Scorer extends Scorer
 	double bodyweight = 0.1;
 	double headerweight = 0.7;
 	double anchorweight = 10;
+	
+//	double urlweight = 1358.5098;
+//	double titleweight = 1877.3308;
+//	double bodyweight = 0;
+//	double headerweight = 798.91;
+//	double anchorweight = 1200.8054;
+
+	/*
+	 * 1358.5098092620121
+		1877.3307647783322
+		0.0
+		798.9100218758613
+		1200.805462971257
+	 */
 
 	///////bm25 specific weights///////////////
 	double burl = 2;
@@ -85,19 +99,19 @@ public class BM25Scorer extends Scorer
 
 					if (tfType.equals("url") && curr.url != null) {
 						currLength = getNumUrlTokens(curr.url);
-						
+
 					} else if (tfType.equals("title") && curr.title != null) {
 						currLength = getNumTokens(curr.title);
-						
+
 					} else if (tfType.equals("header") && curr.headers != null) {
 						currLength = 0;
 						for (String h : curr.headers) {
 							currLength += getNumTokens(h);
 						}
-						
+
 					} else if (tfType.equals("body")) {
 						currLength = curr.body_length;
-						
+
 					} else if (tfType.equals("anchor") && curr.anchors != null) {
 						currLength = 0;
 						for (String anchor : curr.anchors.keySet()) {
@@ -129,31 +143,31 @@ public class BM25Scorer extends Scorer
 		// for each term in the query
 		for (String term : tfQuery.keySet()) {
 			double w = 0.0;
-			
+
 			for (String type : tfs.keySet()) {
 				w += weightParams.get(type) * tfs.get(type).get(term);
 			}
-			
+
 			double idfComponent = -1;
 			if (idfs.containsKey(term)) {
 				idfComponent = idfs.get(term);
 			} else {
 				idfComponent = Math.log10(idfs.size() + NUM_DOCS);
 			}
-			
+
 			score += w * idfComponent / (k1 + w);
 		}
-		
+
 		return score + getPageRankScore(d);
 	}
-	
+
 	private double getPageRankScore(Document d) {
 		// tune the pagerank function
 		// double funcVal = pagerankScores.get(d) / (pageRankLambdaPrime + pagerankScores.get(d));
 		//double funcVal = Math.log10(pageRankLambdaPrime + pagerankScores.get(d));
 		double funcVal = 1 / (pageRankLambdaPrime + 
 				Math.exp(-1.0 * pageRankLambdaDubPrime * pagerankScores.get(d)));
-		
+
 		return pageRankLambda * funcVal;
 	}
 
@@ -173,7 +187,7 @@ public class BM25Scorer extends Scorer
 					double veryNewVal = newVal / (1.0 + Bf * x);
 
 					tfs.get(type).put(term, veryNewVal);
-				
+
 				}
 			}
 		}
@@ -184,7 +198,7 @@ public class BM25Scorer extends Scorer
 		this.normalizeTFs(tfs, d, q);
 
 		Map<String,Double> tfQuery = getQueryFreqs(q);
-		
+
 		return getNetScore(tfs, q, tfQuery, d, idfs);
 	}
 
@@ -192,7 +206,7 @@ public class BM25Scorer extends Scorer
 		str = str.replaceAll("[^A-Za-z0-9 ]", "");
 		return str.split(" ").length;
 	}
-	
+
 	private int getNumUrlTokens(String str) {
 		return str.split("[^A-Za-z0-9 ]").length;
 	}

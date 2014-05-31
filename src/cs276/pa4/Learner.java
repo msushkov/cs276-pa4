@@ -66,4 +66,11 @@ public abstract class Learner {
 
 		return docs;
 	}
+	
+	public void debugPrintVector(double[] vec) {
+		for (int i = 0; i < vec.length; i++) {
+			System.out.print(vec[i] + ", ");
+		}
+		System.out.println();
+	}
 }

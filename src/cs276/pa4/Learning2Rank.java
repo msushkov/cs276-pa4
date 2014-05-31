@@ -14,43 +14,19 @@ import weka.classifiers.Classifier;
 import weka.core.Instances;
 
 public class Learning2Rank {
+	
+	// TODO: chenge the kernel type here!
+	// false is RBF
+	private static boolean isLinearKernel = false;
+	
+	private static Map<String, Double> additionalFeatures = new HashMap<String, Double>();
 
-
-	public static Classifier train(String train_data_file, String train_rel_file, int task, Map<String,Double> idfs) {
-		System.err.println("## Training with feature_file =" + train_data_file + ", rel_file = " + train_rel_file + " ... \n");
-		Classifier model = null;
-		Learner learner = null;
-		
-		Map<String, Double> additionalFeatures = new HashMap<String, Double>();
-
-		if (task == 1) {
-			learner = new PointwiseLearner();
-		} else if (task == 2) {
-			boolean isLinearKernel = false;
-			learner = new PairwiseLearner(isLinearKernel);
-		} else if (task == 3) {
-
-			/* 
-			 * @TODO: Your code here, add more features 
-			 * */
-			System.err.println("Task 3");
-
-		} else if (task == 4) {
-
-			/* 
-			 * @TODO: Your code here, extra credit 
-			 * */
-			System.err.println("Extra credit");
-
-		}
-
-		/* Step (1): construct your feature matrix here */
-		Instances data = learner.extract_train_features(train_data_file, train_rel_file, idfs, additionalFeatures);
-
-		/* Step (2): implement your learning algorithm here */
-		model = learner.training(data);
-
-		return model;
+	
+	private static void addFeatures() {
+		// TODO: add the features here!
+		additionalFeatures.put("bm25", 1.0);
+		additionalFeatures.put("smallestwindow", 1.0);
+		additionalFeatures.put("pagerank", 1.0);
 	}
 
 	// overloaded method to accept C and gamma as params
@@ -59,22 +35,12 @@ public class Learning2Rank {
 		Classifier model = null;
 		Learner learner = null;
 
-		Map<String, Double> additionalFeatures = new HashMap<String, Double>();
-
 		if (task == 1) {
 			learner = new PointwiseLearner();
 		} else if (task == 2) {
-			boolean isLinearKernel = false;
 			learner = new PairwiseLearner(C, gamma, isLinearKernel);
 		} else if (task == 3) {
-
-			// add features
-//			additionalFeatures.put("bm25", 1.0);
-//			additionalFeatures.put("smallestwindow", 1.0);
-//			additionalFeatures.put("pagerank", 1.0);
-
 			learner = new PairwiseLearner(C, gamma, false);
-
 		} else if (task == 4) {
 
 			/* 
@@ -91,40 +57,6 @@ public class Learning2Rank {
 		model = learner.training(data);
 
 		return model;
-	}
-
-	public static Map<String, List<String>> test(String test_data_file, Classifier model, int task, Map<String,Double> idfs){
-		System.err.println("## Testing with feature_file=" + test_data_file + " ... \n");
-		Map<String, List<String>> ranked_queries = new HashMap<String, List<String>>();
-		Learner learner = null;
-		
-		Map<String, Double> additionalFeatures = new HashMap<String, Double>();
-		
-		if (task == 1) {
-			learner = new PointwiseLearner();
-		} else if (task == 2) {
-			boolean isLinearKernel = false;
-			learner = new PairwiseLearner(isLinearKernel);
-		} else if (task == 3) {
-
-			System.err.println("Task 3");
-
-		} else if (task == 4) {
-
-			/* 
-			 * @TODO: Your code here, extra credit 
-			 * */
-			System.err.println("Extra credit");
-
-		}
-
-		/* Step (1): construct your test feature matrix here */
-		TestFeatures tf = learner.extract_test_features(test_data_file, idfs, additionalFeatures);
-
-		/* Step (2): implement your prediction and ranking code here */
-		ranked_queries = learner.testing(tf, model);
-
-		return ranked_queries;
 	}
 
 	// overloaded method to accept C and gamma
@@ -134,22 +66,12 @@ public class Learning2Rank {
 		Map<String, List<String>> ranked_queries = new HashMap<String, List<String>>();
 		Learner learner = null;
 		
-		Map<String, Double> additionalFeatures = new HashMap<String, Double>();
-		
 		if (task == 1) {
 			learner = new PointwiseLearner();
 		} else if (task == 2) {
-			boolean isLinearKernel = false;
 			learner = new PairwiseLearner(isLinearKernel);
 		} else if (task == 3) {
-
-			// add features
-//			additionalFeatures.put("bm25", 1.0);
-//			additionalFeatures.put("smallestwindow", 1.0);
-//			additionalFeatures.put("pagerank", 1.0);
-
 			learner = new PairwiseLearner(C, gamma, false);
-
 		} else if (task == 4) {
 
 			/* 
@@ -208,6 +130,8 @@ public class Learning2Rank {
 		} catch(IOException e){
 			e.printStackTrace();
 		}
+		
+		addFeatures();
 
 		// grid search over parameters
 		// double[] Cs = { Math.pow(2, -3), 0.25, 0.5, 1.0, 2.0, 4.0, 8.0 };

@@ -52,10 +52,11 @@ public class PairwiseLearner extends Learner {
 			e.printStackTrace();
 		}
 
-		model.setCost(C);
-		model.setGamma(gamma); // only matter for RBF kernel
 		if(!isLinearKernel){
 			model.setKernelType(new SelectedTag(LibSVM.KERNELTYPE_RBF, LibSVM.TAGS_KERNELTYPE));
+			
+			model.setCost(C);
+			model.setGamma(gamma); // only matter for RBF kernel
 		} else {
 			model.setKernelType(new SelectedTag(LibSVM.KERNELTYPE_LINEAR, LibSVM.TAGS_KERNELTYPE));
 		}
@@ -182,34 +183,6 @@ public class PairwiseLearner extends Learner {
 					// the feature vector for this (query, doc)
 					double[] currQueryDocFeatures1 = scorer.constructFeatureArray(scores1, additionalFeatures1, relevance1);
 					double[] currQueryDocFeatures2 = scorer.constructFeatureArray(scores2, additionalFeatures2, relevance2);
-
-					if (!isTest) {
-						// find the output label for this pair of vectors (-1 or +1)
-						String outputLabel = "";
-						if (relevance1 > relevance2) {
-							outputLabel = "1";
-						} else if (relevance1 < relevance2) {
-							outputLabel = "-1";
-						}
-
-						int index = 5;
-						
-						if (additionalFeatures.containsKey("bm25")) {
-							index++;
-						}
-
-						if (additionalFeatures.containsKey("smallestwindow")) {
-							index++;
-						}
-
-						if (additionalFeatures.containsKey("pagerank")) {
-							index++;
-						}
-
-						// set the relevance of the resulting feature vector
-						currQueryDocFeatures1[index] = dataset1.attribute(index).indexOfValue(outputLabel);
-						currQueryDocFeatures2[index] = dataset1.attribute(index).indexOfValue(outputLabel.equals("1") ? "-1" : "1");
-					}
 
 					// at this point we have 2 feature vectors: (q, d1) and (q, d2)
 

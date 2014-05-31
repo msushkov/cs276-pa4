@@ -164,27 +164,47 @@ public class PairwiseLearner extends Learner {
 					Pair currQueryDoc2 = new Pair(queryStr, d2.url);
 
 					// extract the features from each of the fields in this doc
-					Map<String, Double> scores = null;
+					Map<String, Double> scores1 = null;
+					Map<String, Double> scores2 = null;
 
 					try {
-						scores = scorer.getSimScore(d1, q, idfs);
+						scores1 = scorer.getSimScore(d1, q, idfs);
+						scores2 = scorer.getSimScore(d2, q, idfs);
 					} catch (Exception e) {
 						// TODO Auto-generated catch block
 						e.printStackTrace();
 					}
 					
-					// extract the features from each of the fields in this doc
-					additionalFeatures = extractAdditionalFeatures(additionalFeatures, d1, q, idfs);
+					// extract the additional features in this doc
+					Map<String, Double> additionalFeatures1 = extractAdditionalFeatures(additionalFeatures, d1, q, idfs);
+					Map<String, Double> additionalFeatures2 = extractAdditionalFeatures(additionalFeatures, d2, q, idfs);
 
 					// the feature vector for this (query, doc)
-					double[] currQueryDocFeatures1 = scorer.constructFeatureArray(scores, additionalFeatures, relevance1);
-					double[] currQueryDocFeatures2 = scorer.constructFeatureArray(scores, additionalFeatures, relevance2);
+					double[] currQueryDocFeatures1 = scorer.constructFeatureArray(scores1, additionalFeatures1, relevance1);
+					double[] currQueryDocFeatures2 = scorer.constructFeatureArray(scores2, additionalFeatures2, relevance2);
 
+//					System.out.println(">> vector1: ");
+//					debugPrintVector(currQueryDocFeatures1);
+//					System.out.println("vector2: ");
+//					debugPrintVector(currQueryDocFeatures2);
+//					System.out.println("---------------");
+					
+					double[] result1 = scorer.subtractVectors(currQueryDocFeatures1, currQueryDocFeatures2);
+					double[] result2 = scorer.subtractVectors(currQueryDocFeatures2, currQueryDocFeatures1);
+					
+					
+					
+//					Instance inst1 = new DenseInstance(1.0, result1);
+//					Instance inst2 = new DenseInstance(1.0, result2);
+//					
+//					dataset1.add(inst1);
+//					dataset2.add(inst2);
+					
 					// at this point we have 2 feature vectors: (q, d1) and (q, d2)
 
 					// now need to store the xi and xj separately
-					Instance inst1 = new DenseInstance(1.0, currQueryDocFeatures1);
-					Instance inst2 = new DenseInstance(1.0, currQueryDocFeatures2);
+					Instance inst1 = new DenseInstance(1.0, result1);
+					Instance inst2 = new DenseInstance(1.0, result2);
 					dataset1.add(inst1);
 					dataset2.add(inst2);
 
@@ -318,7 +338,7 @@ public class PairwiseLearner extends Learner {
 					e.printStackTrace();
 				}
 				
-				if (predictedClass == 0 || predictedClass == -1) {
+				if (predictedClass == 0) {
 					countneg++;
 				} else {
 					countpos++;
@@ -398,4 +418,5 @@ public class PairwiseLearner extends Learner {
 		
 		return newDataset;
 	}
+	
 }

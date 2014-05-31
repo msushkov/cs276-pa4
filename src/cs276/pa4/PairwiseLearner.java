@@ -183,15 +183,6 @@ public class PairwiseLearner extends Learner {
 					double[] currQueryDocFeatures1 = scorer.constructFeatureArray(scores1, additionalFeatures1, relevance1);
 					double[] currQueryDocFeatures2 = scorer.constructFeatureArray(scores2, additionalFeatures2, relevance2);
 
-					//					System.out.println(">> vector1: ");
-					//					debugPrintVector(currQueryDocFeatures1);
-					//					System.out.println("vector2: ");
-					//					debugPrintVector(currQueryDocFeatures2);
-					//					System.out.println("---------------");
-
-					double[] result1 = scorer.subtractVectors(currQueryDocFeatures1, currQueryDocFeatures2);
-					double[] result2 = scorer.subtractVectors(currQueryDocFeatures2, currQueryDocFeatures1);
-					
 					if (!isTest) {
 						// find the output label for this pair of vectors (-1 or +1)
 						String outputLabel = "";
@@ -200,29 +191,23 @@ public class PairwiseLearner extends Learner {
 						} else if (relevance1 < relevance2) {
 							outputLabel = "-1";
 						}
-						
+
 						int index = 5;
-						
+
 						// set the relevance of the resulting feature vector
-						result1[index] = dataset1.attribute(index).indexOfValue(outputLabel);
-						result2[index] = dataset1.attribute(index).indexOfValue(outputLabel.equals("1") ? "-1" : "1");
+						currQueryDocFeatures1[index] = dataset1.attribute(index).indexOfValue(outputLabel);
+						currQueryDocFeatures2[index] = dataset1.attribute(index).indexOfValue(outputLabel.equals("1") ? "-1" : "1");
 					}
-
-					Instance inst1 = new DenseInstance(1.0, result1);
-					Instance inst2 = new DenseInstance(1.0, result2);
-
-					dataset1.add(inst1);
-					dataset1.add(inst2);
 
 					// at this point we have 2 feature vectors: (q, d1) and (q, d2)
 
-					//					// now need to store the xi and xj separately
-					//					Instance inst1 = new DenseInstance(1.0, currQueryDocFeatures1);
-					//					Instance inst2 = new DenseInstance(1.0, currQueryDocFeatures2);
-					//					dataset1.add(inst1);
-					//					dataset2.add(inst2);
+					// now need to store the xi and xj separately
+					Instance inst1 = new DenseInstance(1.0, currQueryDocFeatures1);
+					Instance inst2 = new DenseInstance(1.0, currQueryDocFeatures2);
+					dataset1.add(inst1);
+					dataset2.add(inst2);
 
-					//					assert dataset1.size() == dataset2.size();
+					assert dataset1.size() == dataset2.size();
 
 					if (isTest) {
 						doc2Index.put(d1.url + DOC_SEPARATOR + d2.url, currIndex);
@@ -241,65 +226,65 @@ public class PairwiseLearner extends Learner {
 
 		} // end query loop
 
-		//dataset1.setClassIndex(dataset1.numAttributes() - 1);
-		//dataset2.setClassIndex(dataset2.numAttributes() - 1);
+		dataset1.setClassIndex(dataset1.numAttributes() - 1);
+		dataset2.setClassIndex(dataset2.numAttributes() - 1);
 
 		// standardize the points between 0 and 1
 		Instances newDataset1 = standardizeInstances(dataset1);
-		//Instances newDataset2 = standardizeInstances(dataset2);
+		Instances newDataset2 = standardizeInstances(dataset2);
 
 		newDataset1.setClassIndex(newDataset1.numAttributes() - 1);
-		//newDataset2.setClassIndex(newDataset2.numAttributes() - 1);
+		newDataset2.setClassIndex(newDataset2.numAttributes() - 1);
 
-		//assert newDataset1.size() == newDataset2.size();
+		assert newDataset1.size() == newDataset2.size();
 
 		// subtract the 2 datasets (make sure to do xi - xj and xj - xi)
-		//		for (int i = 0; i < newDataset1.size(); i++) {
-		//			Instance i1 = newDataset1.get(i);
-		//			Instance i2 = newDataset2.get(i);
-		//
-		//			double[] vector1 = i1.toDoubleArray();
-		//			double[] vector2 = i2.toDoubleArray();
-		//
-		//			double relevance1 = vector1[vector1.length - 1];
-		//			double relevance2 = vector2[vector2.length - 1];
-		//
-		//			double[] result1 = scorer.subtractVectors(vector1, vector2);
-		//			double[] result2 = scorer.subtractVectors(vector2, vector1);
-		//
-		//			// find the output label for this pair of vectors (-1 or +1)
-		//			String outputLabel = "";
-		//			if (relevance1 > relevance2) {
-		//				outputLabel = "1";
-		//			} else if (relevance1 < relevance2) {
-		//				outputLabel = "-1";
-		//			}
-		//
-		//			int index = 5;
-		//
-		//			if (additionalFeatures.containsKey("bm25")) {
-		//				index++;
-		//			}
-		//
-		//			if (additionalFeatures.containsKey("smallestwindow")) {
-		//				index++;
-		//			}
-		//
-		//			if (additionalFeatures.containsKey("pagerank")) {
-		//				index++;
-		//			}
-		//
-		//			// set the relevance of the resulting feature vector
-		//			result1[index] = newDataset1.attribute(index).indexOfValue(outputLabel);
-		//			result2[index] = newDataset2.attribute(index).indexOfValue(outputLabel.equals("1") ? "-1" : "1");
-		//
-		//			newDataset.add(new DenseInstance(1.0, result1));
-		//			newDataset.add(new DenseInstance(1.0, result2));
-		//		}
+		for (int i = 0; i < newDataset1.size(); i++) {
+			Instance i1 = newDataset1.get(i);
+			Instance i2 = newDataset2.get(i);
 
-		//newDataset.setClassIndex(newDataset.numAttributes() - 1);
+			double[] vector1 = i1.toDoubleArray();
+			double[] vector2 = i2.toDoubleArray();
 
-		return newDataset1;
+			double relevance1 = vector1[vector1.length - 1];
+			double relevance2 = vector2[vector2.length - 1];
+
+			double[] result1 = scorer.subtractVectors(vector1, vector2);
+			double[] result2 = scorer.subtractVectors(vector2, vector1);
+
+			// find the output label for this pair of vectors (-1 or +1)
+			String outputLabel = "";
+			if (relevance1 > relevance2) {
+				outputLabel = "1";
+			} else if (relevance1 < relevance2) {
+				outputLabel = "-1";
+			}
+
+			int index = 5;
+
+			if (additionalFeatures.containsKey("bm25")) {
+				index++;
+			}
+
+			if (additionalFeatures.containsKey("smallestwindow")) {
+				index++;
+			}
+
+			if (additionalFeatures.containsKey("pagerank")) {
+				index++;
+			}
+
+			// set the relevance of the resulting feature vector
+			result1[index] = newDataset1.attribute(index).indexOfValue(outputLabel);
+			result2[index] = newDataset2.attribute(index).indexOfValue(outputLabel.equals("1") ? "-1" : "1");
+
+			newDataset.add(new DenseInstance(1.0, result1));
+			newDataset.add(new DenseInstance(1.0, result2));
+		}
+
+		newDataset.setClassIndex(newDataset.numAttributes() - 1);
+
+		return newDataset;
 	}
 
 	@Override
@@ -331,9 +316,6 @@ public class PairwiseLearner extends Learner {
 
 		Map<String, List<String>> result = new HashMap<String, List<String>>();
 
-		int countneg = 0;
-		int countpos = 0;
-
 		for (String queryStr : tf.index_map.keySet()) {
 			List<Pair<String, Double>> docScores = new ArrayList<Pair<String, Double>>();
 
@@ -360,12 +342,6 @@ public class PairwiseLearner extends Learner {
 					e.printStackTrace();
 				}
 
-				if (predictedClass == 0) {
-					countneg++;
-				} else {
-					countpos++;
-				}
-
 				pairWiseScores.put(new Pair(doc1Url, doc2Url), predictedClass);
 				pairWiseScores.put(new Pair(doc2Url, doc1Url), predictedClass == 0.0 ? 1.0 : 0.0);
 
@@ -382,9 +358,6 @@ public class PairwiseLearner extends Learner {
 			List<String> docs = this.getSortedDocsPairwise(documents, pairWiseScores);
 			result.put(queryStr, docs);
 		}
-
-		System.out.println(countneg);
-		System.out.println(countpos);
 
 		return result;
 	}

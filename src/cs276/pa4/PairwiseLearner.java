@@ -54,7 +54,7 @@ public class PairwiseLearner extends Learner {
 
 		if(!isLinearKernel){
 			model.setKernelType(new SelectedTag(LibSVM.KERNELTYPE_RBF, LibSVM.TAGS_KERNELTYPE));
-			
+
 			model.setCost(C);
 			model.setGamma(gamma); // only matter for RBF kernel
 		} else {
@@ -89,6 +89,7 @@ public class PairwiseLearner extends Learner {
 			}
 		}
 
+		// query -> doc url -> index
 		indexMap = new HashMap<String, Map<String, Integer>>();
 
 		ArrayList<String> labels = new ArrayList<String>();
@@ -127,9 +128,11 @@ public class PairwiseLearner extends Learner {
 		attributes.add(cls);
 		dataset1 = new Instances("train_dataset1", attributes, 0);
 		dataset2 = new Instances("train_dataset2", attributes, 0);
-		newDataset = new Instances("train_dataset3", attributes, 0);
 
 		int currIndex = 0;
+		
+		// query -> doc url -> index
+		HashMap<String, Map<String, Integer>> currIndexMap = new HashMap<String, Map<String, Integer>>();
 
 		// go through each query
 		for (Query q : trainData.keySet()) {
@@ -160,10 +163,6 @@ public class PairwiseLearner extends Learner {
 						continue;
 					}
 
-					// the (query, doc) pairs
-					Pair currQueryDoc1 = new Pair(queryStr, d1.url);
-					Pair currQueryDoc2 = new Pair(queryStr, d2.url);
-
 					// extract the features from each of the fields in this doc
 					Map<String, Double> scores1 = null;
 					Map<String, Double> scores2 = null;
@@ -192,27 +191,18 @@ public class PairwiseLearner extends Learner {
 					dataset1.add(inst1);
 					dataset2.add(inst2);
 
-					assert dataset1.size() == dataset2.size();
-
-					if (isTest) {
-						doc2Index.put(d1.url + DOC_SEPARATOR + d2.url, currIndex);
-						currIndex++;
-						doc2Index.put(d2.url + DOC_SEPARATOR + d1.url, currIndex);
-						currIndex++;
-					}
+					doc2Index.put(d1.url + DOC_SEPARATOR + d2.url, currIndex);
+					currIndex++;
 
 				} // end j loop
 
 			} // end i loop
 
-			if (isTest) {
-				indexMap.put(queryStr, doc2Index);
-			}
+			currIndexMap.put(queryStr, doc2Index);
 
 		} // end query loop
 
-		dataset1.setClassIndex(dataset1.numAttributes() - 1);
-		dataset2.setClassIndex(dataset2.numAttributes() - 1);
+		newDataset = new Instances("train_dataset3", attributes, 0);
 
 		// standardize the points between 0 and 1
 		Instances newDataset1 = standardizeInstances(dataset1);
@@ -222,53 +212,105 @@ public class PairwiseLearner extends Learner {
 		newDataset2.setClassIndex(newDataset2.numAttributes() - 1);
 
 		assert newDataset1.size() == newDataset2.size();
+		
+		int newIndex = 0;
 
-		// subtract the 2 datasets (make sure to do xi - xj and xj - xi)
-		for (int i = 0; i < newDataset1.size(); i++) {
-			Instance i1 = newDataset1.get(i);
-			Instance i2 = newDataset2.get(i);
+		// go through each query
+		for (Query q : trainData.keySet()) {
+			String queryStr = q.query;
 
-			double[] vector1 = i1.toDoubleArray();
-			double[] vector2 = i2.toDoubleArray();
+			List<Document> docs = trainData.get(q);
+			
+			// doc -> index in dataset
+			Map<String, Integer> doc2Index = new HashMap<String, Integer>();
 
-			double relevance1 = vector1[vector1.length - 1];
-			double relevance2 = vector2[vector2.length - 1];
+			// go through all pairs of documents for that query
+			for (int i = 0; i < docs.size(); i++) {
+				for (int j = i + 1; j < docs.size(); j++) {
+					Document d1 = trainData.get(q).get(i);
+					Document d2 = trainData.get(q).get(j);
+					
+					// get the relevance for both docs (if in test mode then these values dont matter)
+					double relevance1 = -100;
+					double relevance2 = -10;
 
-			double[] result1 = scorer.subtractVectors(vector1, vector2);
-			double[] result2 = scorer.subtractVectors(vector2, vector1);
+					if (!isTest) {
+						relevance1 = relData.get(queryStr).get(d1.url);
+						relevance2 = relData.get(queryStr).get(d2.url);
+					}
 
-			// find the output label for this pair of vectors (-1 or +1)
-			String outputLabel = "";
-			if (relevance1 > relevance2) {
-				outputLabel = "1";
-			} else if (relevance1 < relevance2) {
-				outputLabel = "-1";
+					// skip this pair if they have the same relevance scores
+					if (relevance1 == relevance2) {
+						continue;
+					}
+					
+					// use the index map to get the instance
+					Instance i1 = newDataset1.get(currIndexMap.get(queryStr).get(d1.url + DOC_SEPARATOR + d2.url));
+					Instance i2 = newDataset2.get(currIndexMap.get(queryStr).get(d1.url + DOC_SEPARATOR + d2.url));
+
+					double[] vector1 = i1.toDoubleArray();
+					double[] vector2 = i2.toDoubleArray();
+
+					double[] result1 = scorer.subtractVectors(vector1, vector2);
+					double[] result2 = scorer.subtractVectors(vector2, vector1);
+
+					if (!isTest) {
+						// find the output label for this pair of vectors (-1 or +1)
+						String outputLabel = "";
+						if (relevance1 > relevance2) {
+							outputLabel = "1";
+						} else if (relevance1 < relevance2) {
+							outputLabel = "-1";
+						}
+
+						int index = 5;
+
+						if (additionalFeatures.containsKey("bm25")) {
+							index++;
+						}
+
+						if (additionalFeatures.containsKey("smallestwindow")) {
+							index++;
+						}
+
+						if (additionalFeatures.containsKey("pagerank")) {
+							index++;
+						}
+
+						// set the relevance of the resulting feature vector
+						result1[index] = newDataset1.attribute(index).indexOfValue(outputLabel);
+						result2[index] = newDataset2.attribute(index).indexOfValue(outputLabel.equals("1") ? "-1" : "1");
+					}
+					
+					newDataset.add(new DenseInstance(1.0, result1));
+					newDataset.add(new DenseInstance(1.0, result2));
+					
+					if (isTest) {
+						doc2Index.put(d1.url + DOC_SEPARATOR + d2.url, newIndex);
+						newIndex++;
+						doc2Index.put(d2.url + DOC_SEPARATOR + d1.url, newIndex);
+						newIndex++;
+					}
+					
+				} // end loop over j
+				
+			} // end loop over i
+			
+			if (isTest) {
+				indexMap.put(queryStr, doc2Index);
 			}
-
-			int index = 5;
-
-			if (additionalFeatures.containsKey("bm25")) {
-				index++;
-			}
-
-			if (additionalFeatures.containsKey("smallestwindow")) {
-				index++;
-			}
-
-			if (additionalFeatures.containsKey("pagerank")) {
-				index++;
-			}
-
-			// set the relevance of the resulting feature vector
-			result1[index] = newDataset1.attribute(index).indexOfValue(outputLabel);
-			result2[index] = newDataset2.attribute(index).indexOfValue(outputLabel.equals("1") ? "-1" : "1");
-
-			newDataset.add(new DenseInstance(1.0, result1));
-			newDataset.add(new DenseInstance(1.0, result2));
 		}
-
+		
 		newDataset.setClassIndex(newDataset.numAttributes() - 1);
-
+		
+		
+		for (int i = 0; i < newDataset.size(); i++) {
+			Instance curr = newDataset.get(i);
+			double[] v = curr.toDoubleArray();
+			
+			scorer.printFeatures(v);
+		}
+		
 		return newDataset;
 	}
 

@@ -14,20 +14,6 @@ public class BM25Scorer extends Scorer
 	double bodyweight = 0.1;
 	double headerweight = 0.7;
 	double anchorweight = 10;
-	
-//	double urlweight = 1358.5098;
-//	double titleweight = 1877.3308;
-//	double bodyweight = 0;
-//	double headerweight = 798.91;
-//	double anchorweight = 1200.8054;
-
-	/*
-	 * 1358.5098092620121
-		1877.3307647783322
-		0.0
-		798.9100218758613
-		1200.805462971257
-	 */
 
 	///////bm25 specific weights///////////////
 	double burl = 2;

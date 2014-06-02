@@ -15,7 +15,7 @@ import weka.core.Instances;
 
 public class Learning2Rank {
 	
-	// TODO: chenge the kernel type here!
+	// TODO: change the kernel type here!
 	// false is RBF
 	private static boolean isLinearKernel = false;
 	
@@ -138,8 +138,8 @@ public class Learning2Rank {
 		// double[] gammas = { Math.pow(2, -7), Math.pow(2, -6), Math.pow(2, -5), Math.pow(2, -4), Math.pow(2, -3), Math.pow(2, -2), Math.pow(2, -1) };
 
 		// use the optimal parameters discovered through grid search
-		double[] Cs = { 0.5 };
-		double[] gammas = { 0.125 };
+		double[] Cs = { 0.125 };
+		double[] gammas = { 0.03125 };
 
 		for (double C : Cs) {
 			for (double gamma : gammas) {

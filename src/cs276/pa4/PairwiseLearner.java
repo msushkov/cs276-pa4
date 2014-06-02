@@ -124,14 +124,28 @@ public class PairwiseLearner extends Learner {
 		if (additionalFeatures.containsKey("pagerank")) {
 			attributes.add(new Attribute("pagerank"));
 		}
+		
+		if (additionalFeatures.containsKey("percentage_of_query_terms_in_body")) {
+			attributes.add(new Attribute("percentage_of_query_terms_in_body"));
+		}
+		
+		if (additionalFeatures.containsKey("percentage_of_query_terms_in_anchors")) {
+			attributes.add(new Attribute("percentage_of_query_terms_in_anchors"));
+		}
+		
+		if (additionalFeatures.containsKey("num_of_unique_anchors")) {
+			attributes.add(new Attribute("num_of_unique_anchors"));
+		}
+		
+		if (additionalFeatures.containsKey("title_length")) {
+			attributes.add(new Attribute("title_length"));
+		}
 
 		attributes.add(cls);
 		dataset1 = new Instances("train_dataset1", attributes, 0);
 		dataset2 = new Instances("train_dataset2", attributes, 0);
 
 		int currIndex = 0;
-		
-		
 		
 		// query -> doc url -> index
 		HashMap<String, Map<String, Integer>> currIndexMap = new HashMap<String, Map<String, Integer>>();
@@ -265,11 +279,6 @@ public class PairwiseLearner extends Learner {
 
 					double[] vector1 = i1.toDoubleArray();
 					double[] vector2 = i2.toDoubleArray();
-					
-//					System.out.println(">>> 1: ");
-//					scorer.printFeatures(vector1);
-//					System.out.println("2: ");
-//					scorer.printFeatures(vector2);
 
 					double[] result1 = scorer.subtractVectors(vector1, vector2);
 					double[] result2 = scorer.subtractVectors(vector2, vector1);
@@ -294,6 +303,22 @@ public class PairwiseLearner extends Learner {
 						}
 
 						if (additionalFeatures.containsKey("pagerank")) {
+							index++;
+						}
+						
+						if (additionalFeatures.containsKey("percentage_of_query_terms_in_body")) {
+							index++;
+						}
+						
+						if (additionalFeatures.containsKey("percentage_of_query_terms_in_anchors")) {
+							index++;
+						}
+						
+						if (additionalFeatures.containsKey("num_of_unique_anchors")) {
+							index++;
+						}
+						
+						if (additionalFeatures.containsKey("title_length")) {
 							index++;
 						}
 
@@ -412,8 +437,6 @@ public class PairwiseLearner extends Learner {
 		if (additionalFeatures.containsKey("bm25")) {
 			try {
 				newAdditionalFeatures.put("bm25", bm25scorer.getBM25Score(d, q, idfs));
-				
-				//System.out.println("QUERY: " + q.query +  " DOCUMENT: " + d.url + " BM25: " + bm25scorer.getBM25Score(d, q, idfs));
 			} catch (Exception e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
@@ -431,6 +454,22 @@ public class PairwiseLearner extends Learner {
 
 		if (additionalFeatures.containsKey("pagerank")) {
 			newAdditionalFeatures.put("pagerank", (double) d.page_rank);
+		}
+		
+		if (additionalFeatures.containsKey("percentage_of_query_terms_in_body")) {
+			newAdditionalFeatures.put("percentage_of_query_terms_in_body", scorer.getPercentageOfQueryTermsInField(d, q).get("body"));
+		}
+		
+		if (additionalFeatures.containsKey("percentage_of_query_terms_in_anchors")) {
+			newAdditionalFeatures.put("percentage_of_query_terms_in_anchors", scorer.getPercentageOfQueryTermsInField(d, q).get("body"));
+		}
+		
+		if (additionalFeatures.containsKey("num_of_unique_anchors")) {
+			newAdditionalFeatures.put("num_of_unique_anchors", (double) scorer.getNumOfUniqueAnchors(d, q));
+		}
+		
+		if (additionalFeatures.containsKey("title_length")) {
+			newAdditionalFeatures.put("title_length", (double) scorer.getTitleLength(d));
 		}
 
 		return newAdditionalFeatures;

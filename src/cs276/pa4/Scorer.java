@@ -11,9 +11,9 @@ public abstract class Scorer
 {
 
 	public int NUM_DOCS = 98998;
-	
+
 	Map<String,Double> idfs;
-	
+
 	String[] TFTYPES = {"url","title","body","header","anchor"};
 
 	//handle the query vector
@@ -95,7 +95,8 @@ public abstract class Scorer
 					int count = 0;
 					for (String anchor : d.anchors.keySet()) {
 						// for each anchor, count how many times the query term occurs in that anchor and multiply by the number of times that anchor occurs
-						count += countNumOfOccurrencesInString(queryWord, anchor) * d.anchors.get(anchor);
+						count += (countNumOfOccurrencesInString(queryWord, anchor) * d.anchors.get(anchor));
+						//count += (Math.log10(countNumOfOccurrencesInString(queryWord, anchor)) + Math.log10(d.anchors.get(anchor)));
 					}
 
 					currTermMap.put(queryWord, (double) count);
@@ -151,9 +152,9 @@ public abstract class Scorer
 		result[2] = fieldTypeMap.get("body");
 		result[3] = fieldTypeMap.get("header");
 		result[4] = fieldTypeMap.get("anchor");
-		
+
 		int index = 5;
-		
+
 		if (additionalFeatures.containsKey("bm25")) {
 			result[index] = additionalFeatures.get("bm25");
 			index++;
@@ -169,9 +170,99 @@ public abstract class Scorer
 			index++;
 		}
 		
+		if (additionalFeatures.containsKey("percentage_of_query_terms_in_body")) {
+			result[index] = additionalFeatures.get("percentage_of_query_terms_in_body");
+			index++;
+		}
+		
+		if (additionalFeatures.containsKey("percentage_of_query_terms_in_anchors")) {
+			result[index] = additionalFeatures.get("percentage_of_query_terms_in_anchors");
+			index++;
+		}
+		
+		if (additionalFeatures.containsKey("num_of_unique_anchors")) {
+			result[index] = additionalFeatures.get("num_of_unique_anchors");
+			index++;
+		}
+		
+		if (additionalFeatures.containsKey("title_length")) {
+			result[index] = additionalFeatures.get("title_length");
+			index++;
+		}
+
 		result[index] = relevance;
 
 		return result;
+	}
+	
+	/*
+	 * Get the number of unique anchors for the given doc.
+	 */
+	public int getNumOfUniqueAnchors(Document d, Query q) {
+		if (d.anchors == null) {
+			return 0;
+		}
+		return d.anchors.size();
+	}
+
+	/*
+	 * For each field type, get the % of the query terms that are found in that field.
+	 */
+	public Map<String, Double> getPercentageOfQueryTermsInField(Document d, Query q) {
+		Map<String, Double> result = new HashMap<String, Double>();
+
+		for (String type : TFTYPES) {
+			int count = 0;
+			
+			for (String queryWord : q.words) {
+				// url
+				if (type.equals("url") && d.url != null) {
+					if (d.url.toLowerCase().contains(queryWord.toLowerCase())) {
+						count++;
+					}
+				}
+
+				// title
+				else if (type.equals("title") && d.title != null) {
+					if (d.title.contains(queryWord)) {
+						count++;
+					}
+				}
+
+				// headers
+				else if (type.equals("header") && d.headers != null) {
+					for (String header : d.headers) {
+						if (header.contains(queryWord)) {
+							count++;;
+							break;
+						} 
+					}
+				}
+
+				// body
+				else if (type.equals("body") && d.body_hits != null) {
+					if (d.body_hits.containsKey(queryWord)) {
+						count++;
+					}
+				}
+
+				// anchor
+				else if (type.equals("anchor") && d.anchors != null) {
+					for (String anchor : d.anchors.keySet()) {
+						count++;
+						break;
+					}
+				}
+			}
+			
+			result.put(type, (double) count / q.words.size());
+		}
+
+		return result;
+	}
+	
+	public int getTitleLength(Document d) {
+		return d.title.split(" ").length;
 	}
 
 	/*
@@ -188,7 +279,7 @@ public abstract class Scorer
 
 		return result;
 	}
-	
+
 	public void printFeatures(double[] v) {
 		for (double val : v) {
 			System.out.print(val + ", ");
@@ -209,12 +300,12 @@ public abstract class Scorer
 
 		System.out.println("end query...\n\n\n\n");
 	}
-	
+
 	public void printInstances(Instances newDataset) {
 		for (int i = 0; i < newDataset.size(); i++) {
 			Instance curr = newDataset.get(i);
 			double[] v = curr.toDoubleArray();
-			
+
 			printFeatures(v);
 		}	
 	}

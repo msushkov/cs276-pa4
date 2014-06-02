@@ -37,7 +37,7 @@ public class QueryDocScorer extends Scorer
 		}
 
 		return scores;
-			}
+	}
 
 
 	public void normalizeTFs(Map<String, Map<String, Double>> tfs, Document d, Query q)
@@ -48,6 +48,7 @@ public class QueryDocScorer extends Scorer
 				double newVal = 0;
 				if (tf != 0) {
 					newVal = (1.0 + Math.log10(tf)) / (this.smoothingBodyLength + d.body_length);
+					//newVal = (1.0 + Math.log10(tf)) / (1 + Math.log10(d.body_length));
 				}
 				tfs.get(type).put(term, newVal);
 			}

@@ -144,7 +144,7 @@ public class BM25Scorer extends Scorer
 			score += w * idfComponent / (k1 + w);
 		}
 
-		return score + getPageRankScore(d);
+		return score;// + getPageRankScore(d);
 	}
 
 	private double getPageRankScore(Document d) {

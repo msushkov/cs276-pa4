@@ -81,11 +81,4 @@ public class QueryDocScorer extends Scorer
 
 		return tfQuery;
 	}
-	
-	public void printFeatures(double[] v) {
-		for (double val : v) {
-			System.out.print(val + ", ");
-		}
-		System.out.println();
-	}
 }

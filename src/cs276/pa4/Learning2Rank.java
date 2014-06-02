@@ -24,7 +24,7 @@ public class Learning2Rank {
 	
 	private static void addFeatures() {
 		// TODO: add the features here!
-		additionalFeatures.put("bm25", 1.0);
+		//additionalFeatures.put("bm25", 1.0);
 		additionalFeatures.put("smallestwindow", 1.0);
 		additionalFeatures.put("pagerank", 1.0);
 	}

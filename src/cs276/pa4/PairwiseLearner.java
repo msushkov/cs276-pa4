@@ -131,6 +131,8 @@ public class PairwiseLearner extends Learner {
 
 		int currIndex = 0;
 		
+		
+		
 		// query -> doc url -> index
 		HashMap<String, Map<String, Integer>> currIndexMap = new HashMap<String, Map<String, Integer>>();
 
@@ -145,9 +147,15 @@ public class PairwiseLearner extends Learner {
 
 			// go through all pairs of documents for that query
 			for (int i = 0; i < docs.size(); i++) {
-				for (int j = i + 1; j < docs.size(); j++) {
+				for (int j = 0; j < docs.size(); j++) {
+					if (i == j) continue;
+					
 					Document d1 = trainData.get(q).get(i);
 					Document d2 = trainData.get(q).get(j);
+					
+					if (d1.url.equals(d2.url)) {
+						continue;
+					}
 
 					// get the relevance for both docs (if in test mode then these values dont matter)
 					double relevance1 = -100;
@@ -178,16 +186,17 @@ public class PairwiseLearner extends Learner {
 					// extract the additional features in this doc
 					Map<String, Double> additionalFeatures1 = extractAdditionalFeatures(additionalFeatures, d1, q, idfs);
 					Map<String, Double> additionalFeatures2 = extractAdditionalFeatures(additionalFeatures, d2, q, idfs);
-
+					
 					// the feature vector for this (query, doc)
 					double[] currQueryDocFeatures1 = scorer.constructFeatureArray(scores1, additionalFeatures1, relevance1);
 					double[] currQueryDocFeatures2 = scorer.constructFeatureArray(scores2, additionalFeatures2, relevance2);
-
+					
 					// at this point we have 2 feature vectors: (q, d1) and (q, d2)
 
 					// now need to store the xi and xj separately
 					Instance inst1 = new DenseInstance(1.0, currQueryDocFeatures1);
 					Instance inst2 = new DenseInstance(1.0, currQueryDocFeatures2);
+					
 					dataset1.add(inst1);
 					dataset2.add(inst2);
 
@@ -226,9 +235,15 @@ public class PairwiseLearner extends Learner {
 
 			// go through all pairs of documents for that query
 			for (int i = 0; i < docs.size(); i++) {
-				for (int j = i + 1; j < docs.size(); j++) {
+				for (int j = 0; j < docs.size(); j++) {
+					if (i == j) continue;
+					
 					Document d1 = trainData.get(q).get(i);
 					Document d2 = trainData.get(q).get(j);
+					
+					if (d1.url.equals(d2.url)) {
+						continue;
+					}
 					
 					// get the relevance for both docs (if in test mode then these values dont matter)
 					double relevance1 = -100;
@@ -250,6 +265,11 @@ public class PairwiseLearner extends Learner {
 
 					double[] vector1 = i1.toDoubleArray();
 					double[] vector2 = i2.toDoubleArray();
+					
+//					System.out.println(">>> 1: ");
+//					scorer.printFeatures(vector1);
+//					System.out.println("2: ");
+//					scorer.printFeatures(vector2);
 
 					double[] result1 = scorer.subtractVectors(vector1, vector2);
 					double[] result2 = scorer.subtractVectors(vector2, vector1);
@@ -302,14 +322,6 @@ public class PairwiseLearner extends Learner {
 		}
 		
 		newDataset.setClassIndex(newDataset.numAttributes() - 1);
-		
-		
-		for (int i = 0; i < newDataset.size(); i++) {
-			Instance curr = newDataset.get(i);
-			double[] v = curr.toDoubleArray();
-			
-			scorer.printFeatures(v);
-		}
 		
 		return newDataset;
 	}
@@ -394,10 +406,14 @@ public class PairwiseLearner extends Learner {
 	 */
 	private Map<String, Double> extractAdditionalFeatures(Map<String, Double> additionalFeatures, Document d,
 			Query q, Map<String, Double> idfs) {
+		
+		Map<String, Double> newAdditionalFeatures = new HashMap<String, Double>();
 
 		if (additionalFeatures.containsKey("bm25")) {
 			try {
-				additionalFeatures.put("bm25", bm25scorer.getBM25Score(d, q, idfs));
+				newAdditionalFeatures.put("bm25", bm25scorer.getBM25Score(d, q, idfs));
+				
+				//System.out.println("QUERY: " + q.query +  " DOCUMENT: " + d.url + " BM25: " + bm25scorer.getBM25Score(d, q, idfs));
 			} catch (Exception e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
@@ -406,7 +422,7 @@ public class PairwiseLearner extends Learner {
 
 		if (additionalFeatures.containsKey("smallestwindow")) {
 			try {
-				additionalFeatures.put("smallestwindow", smScorer.getSmallestWindow(d, q, idfs));
+				newAdditionalFeatures.put("smallestwindow", smScorer.getSmallestWindow(d, q, idfs));
 			} catch (Exception e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
@@ -414,10 +430,10 @@ public class PairwiseLearner extends Learner {
 		}
 
 		if (additionalFeatures.containsKey("pagerank")) {
-			additionalFeatures.put("pagerank", (double) d.page_rank);
+			newAdditionalFeatures.put("pagerank", (double) d.page_rank);
 		}
 
-		return additionalFeatures;
+		return newAdditionalFeatures;
 
 	}
 

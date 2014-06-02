@@ -4,6 +4,8 @@ import java.util.HashMap;
 import java.util.Map;
 
 import weka.core.Attribute;
+import weka.core.Instance;
+import weka.core.Instances;
 
 public abstract class Scorer 
 {
@@ -186,8 +188,15 @@ public abstract class Scorer
 
 		return result;
 	}
+	
+	public void printFeatures(double[] v) {
+		for (double val : v) {
+			System.out.print(val + ", ");
+		}
+		System.out.println();
+	}
 
-	private void debugPrinttfResult(Map<String,Map<String, Double>> tf) {
+	public void debugPrinttfResult(Map<String,Map<String, Double>> tf) {
 		for (String type : tf.keySet()) {
 			System.out.print("TYPE: " + type + ": ");
 
@@ -200,5 +209,13 @@ public abstract class Scorer
 
 		System.out.println("end query...\n\n\n\n");
 	}
-
+	
+	public void printInstances(Instances newDataset) {
+		for (int i = 0; i < newDataset.size(); i++) {
+			Instance curr = newDataset.get(i);
+			double[] v = curr.toDoubleArray();
+			
+			printFeatures(v);
+		}	
+	}
 }
